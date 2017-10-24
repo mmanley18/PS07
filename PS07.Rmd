@@ -1,15 +1,18 @@
 ---
-title: "STAT/MATH 495: Problem Set 07"
-author: "WRITE YOUR NAME(S) HERE"
-date: "2017-10-24"
+title: 'STAT/MATH 495: Problem Set 07'
+author: "Meredith Manley"
+date: '2017-10-24'
 output:
   html_document:
-    toc: true
-    toc_float: true
-    toc_depth: 2
-    collapsed: false
-    smooth_scroll: false
+    collapsed: no
     df_print: kable
+    smooth_scroll: no
+    toc: yes
+    toc_depth: 2
+    toc_float: yes
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
 ---
 
 ```{r setup, include=FALSE}
@@ -19,9 +22,13 @@ knitr::opts_chunk$set(
 set.seed(76)
 
 # Load packages
+library(ggplot2)
 library(tidyverse)
 library(broom)
 library(knitr)
+require(mosaic)
+library(ROCR)
+library(dplyr)
 
 train <- read_csv("data/cs-training.csv") %>% 
   rename(Id = X1)
@@ -45,18 +52,91 @@ Please indicate who you collaborated with on this assignment:
 Build the binary classifier based on a single predictor variable: `DebtRatio`,
 `age`, or `MonthlyIncome`. Justify this choice.
 
+### Choose and justify variable selection
 ```{r}
+train2 <- train %>%
+  select(DebtRatio, age, MonthlyIncome) %>%
+  filter(DebtRatio < 2.5, MonthlyIncome < 20000)
 
+ggplot(train2, aes(x=DebtRatio)) + geom_density()
+ggplot(train, aes(x=age)) + geom_density()
+ggplot(train2, aes(x=MonthlyIncome)) + geom_density()
+
+favstats(train$DebtRatio)
+favstats(train$age)
+favstats(train$MonthlyIncome) # many missing values
 ```
 
+> Because `age` has a distribution that most closely resembles a normal distribution, we will use this when building out binary classifier. From the ggplots, we see that `DebtRatio` and `MonthlyIncome` are heavily skewed to the right and thus might not be as strong predictors of `SeriousDlqin2yrs.`
 
+
+### Build the Binary Classifier
+```{r}
+model_formula <- as.formula(SeriousDlqin2yrs~age)
+model_logistic <- glm(model_formula, data=train, family="binomial")
+
+# 1.a) Extract regression table in tidy format
+model_logistic %>% 
+  broom::tidy(conf.int=TRUE)
+
+
+# 1.b) Extract point-by-point info in tidy format
+model_logistic %>% 
+  broom::augment() %>% 
+  as_tibble() %>% 
+  sample_n(5)
+
+# 1.c) Extract summary stats info in tidy format
+model_logistic %>% 
+  broom::glance()
+
+# fit model and record predictions
+model_logistic %>% 
+  broom::augment(newdata=test) %>% 
+  as_tibble() %>% 
+  mutate(p_hat = 1/(1 + exp(-.fitted)))
+
+fitted_model <- model_logistic %>% 
+  broom::augment() %>% 
+  as_tibble() %>% 
+  mutate(p_hat = 1/(1 + exp(-.fitted)))
+
+predictions <- model_logistic %>% 
+  broom::augment(newdata=test) %>% 
+  mutate(p_hat = 1/(1 + exp(-.fitted)))
+
+train_augmented <- model_logistic %>% 
+  broom::augment() %>% 
+  as_tibble() %>% 
+  mutate(p_hat = 1/(1+exp(-.fitted)))
+
+# Computes the ROC curve
+pred <- prediction(predictions = train_augmented$p_hat, labels = train_augmented$SeriousDlqin2yrs)
+perf <- performance(pred, "tpr","fpr")
+
+# Computes the Area Under the Curve
+auc <- as.numeric(performance(pred,"auc")@y.values)
+auc
+
+# select function to create submissions dataset
+submission <- predictions %>%
+  select(Id, p_hat) 
+
+colnames(submission)[2] <- "Probability"
+
+write.csv(submission, "submission.csv")
+```
+
+> By looking at the value for the area under the curve (0.6352512), we see that the predictors in this model do substantially better than the baseline of 0.5. We also checked the AUC for the other models using `DebtRatio` and `MonthlyIncome` as the single predictor and these values were lower than that of `age` so this further supports our decision to use `age` as the single predictor.
 
 # ROC curve
 
 Based on the ultimate classifier you choose, plot a corresponding ROC curve.
 
 ```{r}
-
+# This bit of code prints it
+plot(perf, main=paste("Area Under the Curve =", round(auc, 3)))
+abline(c(0, 1), lty=2)
 ```
 
 
@@ -67,5 +147,17 @@ Instead of using any predictor information as you did above, switch your
 predictions to random guesses and plot the resulting ROC curve.
 
 ```{r}
+# Computes the ROC curve based on random guessing
+pred <- prediction(predictions = sample(train_augmented$p_hat), labels = train_augmented$SeriousDlqin2yrs)
+perf <- performance(pred, "tpr","fpr")
 
+# Computes the Area Under the Curve
+auc <- as.numeric(performance(pred,"auc")@y.values)
+auc
+
+# This bit of code prints it
+plot(perf, main=paste("Area Under the Curve =", round(auc, 3)))
+abline(c(0, 1), lty=2)
 ```
+
+> This plot shows our ROC curve is essentially overlapping the baseline curve, thus showing us that when we compute an ROC curve without using any predictor information that our predictions will not be very accurate.
