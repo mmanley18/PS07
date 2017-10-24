@@ -10,9 +10,6 @@ output:
     toc: yes
     toc_depth: 2
     toc_float: yes
-  pdf_document:
-    toc: yes
-    toc_depth: '2'
 ---
 
 ```{r setup, include=FALSE}
@@ -94,7 +91,8 @@ model_logistic %>%
 model_logistic %>% 
   broom::augment(newdata=test) %>% 
   as_tibble() %>% 
-  mutate(p_hat = 1/(1 + exp(-.fitted)))
+  mutate(p_hat = 1/(1 + exp(-.fitted))) %>%
+  sample_n(5)
 
 fitted_model <- model_logistic %>% 
   broom::augment() %>% 
