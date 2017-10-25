@@ -59,12 +59,26 @@ ggplot(train2, aes(x=DebtRatio)) + geom_density()
 ggplot(train, aes(x=age)) + geom_density()
 ggplot(train2, aes(x=MonthlyIncome)) + geom_density()
 
+# decriptive statistics
 favstats(train$DebtRatio)
 favstats(train$age)
 favstats(train$MonthlyIncome) # many missing values
+
+# model summary
+model_formula <- as.formula(SeriousDlqin2yrs~DebtRatio)
+model_logisticA <- glm(model_formula, data=train, family="binomial")
+summary(model_logisticA)
+
+model_formula <- as.formula(SeriousDlqin2yrs~age)
+model_logisticB <- glm(model_formula, data=train, family="binomial")
+summary(model_logisticB)
+
+model_formula <- as.formula(SeriousDlqin2yrs~MonthlyIncome)
+model_logisticC <- glm(model_formula, data=train, family="binomial")
+summary(model_logisticC)
 ```
 
-> Because `age` has a distribution that most closely resembles a normal distribution, we will use this when building out binary classifier. From the ggplots, we see that `DebtRatio` and `MonthlyIncome` are heavily skewed to the right and thus might not be as strong predictors of `SeriousDlqin2yrs.`
+> Because `MonthlyIncome` has so many missing values we will not use this variable as the predictor for serious delinquincy in 2 years and because `DebtRatio`did not have a as significant p-value as `age` and `MontlyIncome` in the model summary, we will use `age` as our predictor for this binary classifier.
 
 
 ### Build the Binary Classifier
