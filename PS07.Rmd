@@ -78,7 +78,7 @@ model_logisticC <- glm(model_formula, data=train, family="binomial")
 summary(model_logisticC)
 ```
 
-> Because `MonthlyIncome` has so many missing values we will not use this variable as the predictor for serious delinquincy in 2 years and because `DebtRatio`did not have a as significant p-value as `age` and `MontlyIncome` in the model summary, we will use `age` as our predictor for this binary classifier.
+> Because `MonthlyIncome` has so many missing values we will not use this variable as the predictor for serious delinquincy in 2 years and because `DebtRatio`did not have an as significant p-value as `age` and `MontlyIncome` in the model summary, we will use `age` as our predictor for this binary classifier.
 
 
 ### Build the Binary Classifier
